@@ -1,16 +1,35 @@
-name: CI - Build Image
+name: CI - Build and Push to Registry
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
+    
+    # Даем роботу права на запись в пакеты (Registry)
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Шаг 1: Логин в GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      # Шаг 2: Сборка образа с правильным тегом
       - name: Build Docker image
-        run: docker build -t nginx-proxy:${{ github.sha }} .
+        run: |
+          docker build \
+            -t ghcr.io/evtuhovklim82-commits/docker-nginx:latest \
+            -t ghcr.io/evtuhovklim82-commits/docker-nginx:${{ github.sha }} .
+
+      # Шаг 3: Отправка образа на склад (Push)
+      - name: Push Docker image
+        run: |
+          docker push ghcr.io/evtuhovklim82-commits/docker-nginx:latest
+          docker push ghcr.io/evtuhovklim82-commits/docker-nginx:${{ github.sha }}
